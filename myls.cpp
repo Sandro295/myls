@@ -9,15 +9,21 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <grp.h>
 #include <chrono>
 
 struct Flags {
     bool lflag{0};
 };
 
-static const char * user_name(uid_t uid) {
+static const char *user_name(uid_t uid) {
 	struct passwd *passwd = getpwuid(uid);
     return passwd ? passwd->pw_name : nullptr;
+}
+
+static const char *group_name(gid_t gid) {
+	struct group *group = getgrgid(gid);
+    return group ? group->gr_name : nullptr;
 }
 
 void printPermissions(const std::filesystem::perms p) {
@@ -59,8 +65,42 @@ char getFileType(const std::filesystem::file_type filetype) {
     }
 }
 
-auto secToDate() {
-    return 0;
+auto secToDate(auto wts) {
+      /* Consider a time to be recent if it is within the past six
+         months.  A Gregorian year has 365.2425 * 24 * 60 * 60 ==
+         31556952 seconds on the average.  Write this value as an
+         integer constant to avoid floating point hassles.  */
+    using namespace std::chrono;
+    const auto current_time = round<minutes>(file_clock::now());
+    const auto six_months_ago = current_time - 31556952s / 2;
+    return wts > six_months_ago ? std::format("{:%b %e %H:%M}", wts) : std::format("{:%b %e %Y}", wts);
+}
+
+void printColorfulFilename(auto filename, auto filetype, const std::filesystem::perms p) {
+    using namespace std::filesystem;
+    using std::filesystem::perms;
+    if (file_type::directory == filetype) {
+        std::cout << "\x1b[34m" << filename << "\033[0m\t\t";
+        return;
+    }
+    if ((perms::owner_exec & p) != perms::none) {
+        std::cout << "\x1B[32m" << filename << "\033[0m\t\t";
+        return;
+    }
+//        case file_type::fifo:
+//            return 'p';
+//        case file_type::block:
+//            return 'b';
+//        case file_type::socket:
+//            return 's';
+//        case file_type::symlink:
+//            return 'l';
+//        case file_type::character:
+//            return 'c';
+//        case file_type::not_found:
+//            throw std::runtime_error{"lost a file, hmm"};
+            std::cout << filename;
+
 }
 
 void walkDirectory(const std::string& dirPath, Flags flags) {
@@ -69,44 +109,45 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
         for(auto _ : std::filesystem::directory_iterator(dirPath)) {
             ++fileCount;
         }
-        const auto sep = fileCount > 10 ? "\n" : "  ";
+        const auto sep = fileCount > 25 ? "\n" : "  ";
         for(const auto fit : std::filesystem::directory_iterator(dirPath)) {
-            std::cout << fit.path().filename().string() << sep;
+            auto fname = fit.path().filename().string();
+            if (fname.find(' ') != std::string::npos) {
+                std::cout << fit.path().filename() << sep;
+            } else {
+                std::cout << fit.path().filename().string() << sep;
+            }
         }
-        std::cout << std::endl;
+        std::cout << "\n" << std::endl;
         return;
     }
     
-      /* Consider a time to be recent if it is within the past six
-         months.  A Gregorian year has 365.2425 * 24 * 60 * 60 ==
-         31556952 seconds on the average.  Write this value as an
-         integer constant to avoid floating point hassles.  */
-      //six_months_ago.tv_sec = current_time.tv_sec - 31556952 / 2;
-      //six_months_ago.tv_nsec = current_time.tv_nsec;
-    auto print = [&](auto value, auto width, auto sep) {
+    auto print = [](auto value, auto width, auto sep = " ") {
         std::cout << std::setw(width) << value << sep;
     };
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
         struct stat sb;
         if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
-              std::cout << strerror(errno) << '\n';
-              std::cout << fit.path().filename().string() << "\n";
-              continue;
+            std::cout << strerror(errno) << '\n';
+            std::cout << fit.path().filename().string() << "\n";
+            continue;
         };
         auto statcpp = fit.status();
         std::cout << getFileType(statcpp.type());
         printPermissions(statcpp.permissions());
         print(sb.st_nlink, 5, " ");
         if (auto name = user_name(sb.st_uid); name) {
-            std::cout << name << " ";
+            print(name, 5, " ");
         }
-        if (auto name = user_name(sb.st_gid); name) {
-            std::cout << name << " ";
+        if (auto name = group_name(sb.st_gid); name) {
+            print(name, 5, " ");
         }
         print(sb.st_size, 7, " ");
         auto wtime = std::filesystem::last_write_time(fit);
-        std::cout << std::format("{:%H:%M} ", wtime);
-        std::cout << fit.path().filename().string() << " ";
+        print(secToDate(wtime), 8, " ");
+        printColorfulFilename(fit.path().filename().string(), statcpp.type(), statcpp.permissions());
+//        std::cout << fit.path().filename().string() << " ";
+        std::cout << " ";
         if (fit.is_symlink()) {
             std::cout << "-> " << std::filesystem::read_symlink(fit).string();
         }
@@ -124,6 +165,9 @@ int main(int argc, char** argv) {
             case 'l':
                 flags.lflag = true;
                 break;
+            case '?':
+                std::cout << "dafuq u said\n";
+                return 0;
         }
     }
 
@@ -139,6 +183,33 @@ int main(int argc, char** argv) {
     } catch (std::exception& ex) {
         std::cout << ex.what() << std::endl;
     }
+
+    
+    printf("\n");
+    printf("\x1B[31mTexting1\033[0m\t\t");
+    printf("\x1B[32mTexting2\033[0m\t\t");
+    printf("\x1B[33mTexting3\033[0m\t\t");
+    printf("\x1b[34mtexting4\033[0m\t\t");
+    printf("\x1B[35mTexting5\033[0m\n");
+    
+    printf("\x1B[36mTexting6\033[0m\t\t");
+    printf("\x1B[36mTexting7\033[0m\t\t");
+    printf("\x1B[36mTexting8\033[0m\t\t");
+    printf("\x1B[37mTexting9\033[0m\t\t");
+    printf("\x1B[93mTexting10\033[0m\n");
+    
+    printf("\033[3;42;30mTexting11\033[0m\t\t");
+    printf("\033[3;43;30mTexting12\033[0m\t\t");
+    printf("\033[3;44;30mTexting13\033[0m\t\t");
+    printf("\033[3;104;30mTexting14\033[0m\t\t");
+    printf("\033[3;100;30mTexting15\033[0m\n");
+
+    printf("\033[3;47;35mTexting16\033[0m\t\t");
+    printf("\033[2;47;35mTexting17\033[0m\t\t");
+    printf("\033[1;47;35mTexting18\033[0m\t\t");
+    printf("\t\t");
+    printf("\n");
+
     return 0;
 }
 
