@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
                 flags.lflag = true;
                 break;
             case '?':
-                std::cout << "dafuq u said\n";
+                std::cout << "Usage: myls [-l] [FILE]... \n";
                 return 0;
         }
     }
@@ -210,32 +210,6 @@ int main(int argc, char** argv) {
     } catch (std::exception& ex) {
         std::cout << ex.what() << std::endl;
     }
-
-    
-    printf("\n");
-    printf("\x1B[31mTexting1\033[0m\t\t");
-    printf("\x1B[32mTexting2\033[0m\t\t");
-    printf("\x1B[33mTexting3\033[0m\t\t");
-    printf("\x1b[34mtexting4\033[0m\t\t");
-    printf("\x1B[35mTexting5\033[0m\n");
-    
-    printf("\x1B[36mTexting6\033[0m\t\t");
-    printf("\x1B[36mTexting7\033[0m\t\t");
-    printf("\x1B[36mTexting8\033[0m\t\t");
-    printf("\x1B[37mTexting9\033[0m\t\t");
-    printf("\x1B[93mTexting10\033[0m\n");
-    
-    printf("\033[3;42;30mTexting11\033[0m\t\t");
-    printf("\033[3;43;30mTexting12\033[0m\t\t");
-    printf("\033[3;44;30mTexting13\033[0m\t\t");
-    printf("\033[3;104;30mTexting14\033[0m\t\t");
-    printf("\033[3;100;30mTexting15\033[0m\n");
-
-    printf("\033[3;47;35mTexting16\033[0m\t\t");
-    printf("\033[2;47;35mTexting17\033[0m\t\t");
-    printf("\033[1;47;35mTexting18\033[0m\t\t");
-    printf("\t\t");
-    printf("\n");
 
     return 0;
 }
