@@ -1,13 +1,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <format>
+#include <iomanip>
 #include <iostream>
 #include <filesystem>
 #include <stdexcept>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <chrono>
 
+struct flags {
+    bool lflag{0};
+};
 static const char * user_name(uid_t uid) {
 	struct passwd *passwd = getpwuid(uid);
     return passwd ? passwd->pw_name : nullptr;
@@ -56,8 +62,8 @@ auto secToDate() {
     return 0;
 }
 
-void walkDirectory(const std::string& dirPath, bool lflag = false) {
-    if (!lflag) {
+void walkDirectory(const std::string& dirPath, flags flags) {
+    if (!flags.lflag) {
         uint32_t fileCount{0};
         for(auto _ : std::filesystem::directory_iterator(dirPath)) {
             ++fileCount;
@@ -76,7 +82,9 @@ void walkDirectory(const std::string& dirPath, bool lflag = false) {
          integer constant to avoid floating point hassles.  */
       //six_months_ago.tv_sec = current_time.tv_sec - 31556952 / 2;
       //six_months_ago.tv_nsec = current_time.tv_nsec;
-
+auto print = [&](auto value, auto width, auto sep) {
+    std::cout << std::setw(width) << value << sep;
+};
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
         struct stat sb;
         if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
@@ -87,39 +95,41 @@ void walkDirectory(const std::string& dirPath, bool lflag = false) {
         auto statcpp = fit.status();
         std::cout << getFileType(statcpp.type());
         printPermissions(statcpp.permissions());
-        std::cout << sb.st_nlink << " ";
+        print(sb.st_nlink, 5, " ");
         if (auto name = user_name(sb.st_uid); name) {
             std::cout << name << " ";
         }
         if (auto name = user_name(sb.st_gid); name) {
             std::cout << name << " ";
         }
-        std::cout << sb.st_size << " ";
-        std::cout << sb.st_mtim.tv_sec/60/60/24 << " ";
+        print(sb.st_size, 7, " ");
+//        std::cout << sb.st_size << " ";
+        auto wtime = std::filesystem::last_write_time(fit);
+        std::cout << std::format("{:%H:%M} ", wtime);
         std::cout << fit.path().filename().string() << "\n";
     }
     std::cout << std::endl;
 }
 
 int main(int argc, char** argv) {
-    bool lflag = 0;
+    flags flags;
     int c;
     opterr = 0;
     while ((c = getopt(argc, argv, "l")) != -1) {
         switch (c) {
             case 'l':
-                lflag = true;
+                flags.lflag = true;
                 break;
         }
     }
 
     try {
         if (auto i = optind; i == argc) {
-            walkDirectory(".", lflag);
+            walkDirectory(".", flags);
         } else {
             for (; i < argc; ++i) {
                 std::cout << argv[i] << ":\n";
-                walkDirectory(argv[i], lflag);
+                walkDirectory(argv[i], flags);
             }
         }
     } catch (std::exception& ex) {
