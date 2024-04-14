@@ -66,10 +66,10 @@ char getFileType(const std::filesystem::file_type filetype) {
 }
 
 std::string secToDate(std::filesystem::file_time_type wts) {
-      /* Consider a time to be recent if it is within the past six
-         months.  A Gregorian year has 365.2425 * 24 * 60 * 60 ==
-         31556952 seconds on the average.  Write this value as an
-         integer constant to avoid floating point hassles.  */
+    /* Consider a time to be recent if it is within the past six
+       months.  A Gregorian year has 365.2425 * 24 * 60 * 60 ==
+       31556952 seconds on the average.  Write this value as an
+       integer constant to avoid floating point hassles.  */
     using namespace std::chrono;
     const auto tz = current_zone();
     const auto locCurrTime = tz->to_local(system_clock::now());
@@ -79,7 +79,7 @@ std::string secToDate(std::filesystem::file_time_type wts) {
 }
 
 void printColorfulFilename(auto filename, auto filestats) {
-    /* eval $(echo "no:global default;fi:normal file;di:directory;ln:symbolic link;pi:named pipe;so:socket;do:door;bd:block device;cd:character device;or:orphan symlink;mi:missing file;su:set uid;sg:set gid;tw:sticky other writable;ow:other writable;st:sticky;ex:executable;"|sed -e 's/:/="/g; s/\;/"\n/g')           
+/* eval $(echo "no:global default;fi:normal file;di:directory;ln:symbolic link;pi:named pipe;so:socket;do:door;bd:block device;cd:character device;or:orphan symlink;mi:missing file;su:set uid;sg:set gid;tw:sticky other writable;ow:other writable;st:sticky;ex:executable;"|sed -e 's/:/="/g; s/\;/"\n/g')           
 {      
   IFS=:     
   for i in $LS_COLORS     
@@ -108,18 +108,6 @@ void printColorfulFilename(auto filename, auto filestats) {
         std::cout << greenc << filename << endc;
         return;
     }
-//        case file_type::fifo:
-//            return 'p';
-//        case file_type::block:
-//            return 'b';
-//        case file_type::socket:
-//            return 's';
-//        case file_type::symlink:
-//            return 'l';
-//        case file_type::character:
-//            return 'c';
-//        case file_type::not_found:
-//            throw std::runtime_error{"lost a file, hmm"};
     std::cout << filename;
 }
 

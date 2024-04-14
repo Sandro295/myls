@@ -3,7 +3,7 @@
 Made with C++20  
 supports only the -l flag  
 colors are kinda off  
-width of printed fileds is not adaptive
+width of printed fileds is not adaptive  
 
 build via cmake
 ```
