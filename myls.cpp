@@ -65,15 +65,17 @@ char getFileType(const std::filesystem::file_type filetype) {
     }
 }
 
-auto secToDate(auto wts) {
+std::string secToDate(std::filesystem::file_time_type wts) {
       /* Consider a time to be recent if it is within the past six
          months.  A Gregorian year has 365.2425 * 24 * 60 * 60 ==
          31556952 seconds on the average.  Write this value as an
          integer constant to avoid floating point hassles.  */
     using namespace std::chrono;
-    const auto current_time = round<minutes>(file_clock::now());
-    const auto six_months_ago = current_time - 31556952s / 2;
-    return wts > six_months_ago ? std::format("{:%b %e %H:%M}", wts) : std::format("{:%b %e %Y}", wts);
+    const auto tz = current_zone();
+    const auto locCurrTime = tz->to_local(system_clock::now());
+    const auto locFileTime = tz->to_local(clock_cast<system_clock>(wts));
+    const auto six_months_ago = locCurrTime - 31556952s / 2;
+    return locFileTime > six_months_ago ? std::format("{:%b %e %H:%M}", locFileTime) : std::format("{:%b %e %Y}", locFileTime);
 }
 
 void printColorfulFilename(auto filename, auto filestats) {
@@ -119,7 +121,6 @@ void printColorfulFilename(auto filename, auto filestats) {
 //        case file_type::not_found:
 //            throw std::runtime_error{"lost a file, hmm"};
     std::cout << filename;
-
 }
 
 void walkDirectory(const std::string& dirPath, Flags flags) {
@@ -143,7 +144,7 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
         return;
     }
     
-    auto print = [](auto value, auto width, auto sep = " ") {
+    auto print = [](auto value, auto width, const char* sep = " ") {
         std::cout << std::setw(width) << value << sep;
     };
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
@@ -160,16 +161,16 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
         auto statcpp = fit.symlink_status();
         std::cout << getFileType(statcpp.type());
         printPermissions(statcpp.permissions());
-        print(sb.st_nlink, 5, " ");
+        print(sb.st_nlink, 5);
         if (auto name = user_name(sb.st_uid); name) {
-            print(name, 5, " ");
+            print(name, 5);
         }
         if (auto name = group_name(sb.st_gid); name) {
-            print(name, 5, " ");
+            print(name, 5);
         }
-        print(sb.st_size, 7, " ");
+        print(sb.st_size, 7);
         auto wtime = std::filesystem::last_write_time(fit);
-        print(secToDate(wtime), 12, " ");
+        print(secToDate(wtime), 12);
         printColorfulFilename(filename, statcpp);
         std::cout << " ";
         if (fit.is_symlink()) {
