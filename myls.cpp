@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -75,7 +76,7 @@ std::string secToDate(std::filesystem::file_time_type wts) {
     const auto locCurrTime = tz->to_local(system_clock::now());
     const auto locFileTime = tz->to_local(clock_cast<system_clock>(wts));
     const auto six_months_ago = locCurrTime - 31556952s / 2;
-    return locFileTime > six_months_ago ? std::format("{:%b %e %H:%M}", locFileTime) : std::format("{:%b %e %Y}", locFileTime);
+    return locFileTime > six_months_ago ? std::format("{:%b %e %H:%M}", locFileTime) : std::format("{:%b %e  %Y}", locFileTime);
 }
 
 void printColorfulFilename(auto filename, auto filestats) {
@@ -111,6 +112,15 @@ void printColorfulFilename(auto filename, auto filestats) {
     std::cout << filename;
 }
 
+int numDigits(int number) {
+    int digits = 0;
+    while (number) {
+        number /= 10;
+        digits++;
+    }
+    return digits;
+}
+
 void walkDirectory(const std::string& dirPath, Flags flags) {
     if (!flags.lflag) {
         uint32_t fileCount{0};
@@ -132,9 +142,27 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
         return;
     }
     
-    auto print = [](auto value, auto width, const char* sep = " ") {
+    auto print = [](const auto& value, auto width, const char* sep = " ") {
         std::cout << std::setw(width) << value << sep;
     };
+    int maxNameLength = 1;
+    int maxGroupLength = 1;
+    int maxLinkLength = 1;
+    int maxSizeLength = 1;
+    for (auto fit : std::filesystem::directory_iterator(dirPath)) {
+        struct stat sb;
+        if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
+            continue;
+        }
+        const int currNameLength = strlen(user_name(sb.st_uid));
+        maxNameLength = std::max(maxNameLength, currNameLength);
+        const int currGroupLength = strlen(group_name(sb.st_gid));
+        maxGroupLength = std::max(maxGroupLength, currGroupLength);
+        const int currSizeLength = numDigits(sb.st_size);
+        maxSizeLength = std::max(maxSizeLength, currSizeLength);
+        const int currLinkLength = numDigits(sb.st_nlink);
+        maxLinkLength = std::max(maxLinkLength, currLinkLength);
+    }
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
         struct stat sb;
         if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
@@ -142,21 +170,21 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
             std::cout << fit.path().filename().string() << "\n";
             continue;
         };
-        auto filename = fit.path().filename().string();
+        const auto filename = fit.path().filename().string();
         if (filename.starts_with(".")) {
             continue;
         }
-        auto statcpp = fit.symlink_status();
+        const auto statcpp = fit.symlink_status();
         std::cout << getFileType(statcpp.type());
         printPermissions(statcpp.permissions());
-        print(sb.st_nlink, 5);
+        print(sb.st_nlink, maxLinkLength);
         if (auto name = user_name(sb.st_uid); name) {
-            print(name, 5);
+            print(name, maxNameLength);
         }
         if (auto name = group_name(sb.st_gid); name) {
-            print(name, 5);
+            print(name, maxGroupLength);
         }
-        print(sb.st_size, 7);
+        print(sb.st_size, maxSizeLength);
         auto wtime = std::filesystem::last_write_time(fit);
         print(secToDate(wtime), 12);
         printColorfulFilename(filename, statcpp);
