@@ -149,6 +149,7 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
     int maxGroupLength = 1;
     int maxLinkLength = 1;
     int maxSizeLength = 1;
+    int blocksTotal = 0;
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
         struct stat sb;
         if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
@@ -162,7 +163,9 @@ void walkDirectory(const std::string& dirPath, Flags flags) {
         maxSizeLength = std::max(maxSizeLength, currSizeLength);
         const int currLinkLength = numDigits(sb.st_nlink);
         maxLinkLength = std::max(maxLinkLength, currLinkLength);
+        blocksTotal += sb.st_blocks;
     }
+    std::cout << "total " << blocksTotal/2 << "\n";
     for (auto fit : std::filesystem::directory_iterator(dirPath)) {
         struct stat sb;
         if (auto cname = fit.path().c_str(); stat(cname, &sb) == -1) {
